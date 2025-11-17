@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -8,6 +8,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { AutoFocusDirective } from '../../shared/directives/auto-focus.directive';
 import { CapitalizePipe } from '../../shared/pipes/capitalize.pipe';
+import { AuthService } from "../../core/services/auth.service";
+import { NotificationAlert } from 'src/app/shared/services/notification-alert/notification-alert';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-signup',
@@ -20,7 +23,8 @@ import { CapitalizePipe } from '../../shared/pipes/capitalize.pipe';
     MatButtonModule,
     MatIconModule,
     AutoFocusDirective,
-    CapitalizePipe
+    CapitalizePipe,
+    MatSnackBarModule
   ],
   template: `
     <div class="space-y-6">
@@ -38,10 +42,17 @@ import { CapitalizePipe } from '../../shared/pipes/capitalize.pipe';
       
       <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="space-y-6">
         <mat-form-field appearance="outline" class="w-full">
-          <mat-label>Full Name</mat-label>
+          <mat-label>Name</mat-label>
           <input matInput type="text" formControlName="name" required autocomplete="name" appAutoFocus>
           <mat-error *ngIf="signupForm.get('name')?.hasError('required')">Full name is required</mat-error>
           <mat-error *ngIf="signupForm.get('name')?.hasError('minlength')">Full name must be at least 2 characters</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Last Name</mat-label>
+          <input matInput type="text" formControlName="lastname" required autocomplete="lastname" appAutoFocus>
+          <mat-error *ngIf="signupForm.get('lastname')?.hasError('required')">Lastname is required</mat-error>
+          <mat-error *ngIf="signupForm.get('lastname')?.hasError('minlength')">Lastname must be at least 2 characters</mat-error>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="w-full">
@@ -49,6 +60,13 @@ import { CapitalizePipe } from '../../shared/pipes/capitalize.pipe';
           <input matInput type="email" formControlName="email" required autocomplete="email">
           <mat-error *ngIf="signupForm.get('email')?.hasError('required')">Email is required</mat-error>
           <mat-error *ngIf="signupForm.get('email')?.hasError('email')">Please enter a valid email address</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Phone</mat-label>
+          <input matInput type="tel" formControlName="phone" required autocomplete="phone">
+          <mat-error *ngIf="signupForm.get('phone')?.hasError('required')">Phone is required</mat-error>
+          <!-- <mat-error *ngIf="signupForm.get('phone')?.hasError('phone')">Please enter a valid phone address</mat-error> -->
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="w-full">
@@ -80,18 +98,21 @@ import { CapitalizePipe } from '../../shared/pipes/capitalize.pipe';
   `
 })
 export class SignupComponent {
+  private fb = inject(FormBuilder);
+  private router = inject(Router);
   signupForm: FormGroup;
   loading = signal(false);
+  private authService = inject(AuthService);
+  private notification = inject(NotificationAlert);
 
-  constructor(
-    private fb: FormBuilder,
-    private router: Router
-  ) {
+  constructor(private snackBar: MatSnackBar) {
     this.signupForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
+      lastname: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
+      phone: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(10), Validators.pattern('^[0-9]+$')]],
       password: ['', [Validators.required, Validators.minLength(6)]],
-      confirmPassword: ['', [Validators.required]]
+      confirmPassword: ['', [Validators.required]],
     }, { validators: this.passwordMatchValidator });
   }
 
@@ -102,14 +123,34 @@ export class SignupComponent {
   }
 
   onSubmit(): void {
+    const form = this.signupForm.value;
+    console.log(form);
     if (this.signupForm.valid) {
       this.loading.set(true);
 
+      
+
+      this.authService
+        .register(form)
+        .subscribe({
+          next: () => {
+            this.loading.set(false);
+            this.router.navigate(['/auth/login']);
+          },
+          error: (error) => {
+            this.loading.set(false);
+            const errorMessage =
+              error?.message || "Login failed. Please try again.";
+            this.snackBar.open(errorMessage, "Close", { duration: 3000 });
+            console.error("Login error:", error);
+          },
+        });
+
       // Mock signup for development
-      setTimeout(() => {
-        this.loading.set(false);
-        this.router.navigate(['/auth/login']);
-      }, 1000);
+      // setTimeout(() => {
+      //   this.loading.set(false);
+      //   this.router.navigate(['/auth/login']);
+      // }, 1000);
     }
   }
 

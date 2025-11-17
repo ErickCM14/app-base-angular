@@ -4,14 +4,15 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  user: {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    avatar?: string;
-  };
-  token: string;
+  // user: {
+  //   id: number;
+  //   name: string;
+  //   email: string;
+  //   role: string;
+  //   avatar?: string;
+  // };
+  // token: string;
+  data: any,
 }
 
 export interface AuthUser {

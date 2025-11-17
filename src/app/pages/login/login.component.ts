@@ -86,9 +86,9 @@ import { CapitalizePipe } from "../../shared/pipes/capitalize.pipe";
           </mat-form-field>
 
           <div class="flex items-center justify-between">
-            <mat-checkbox [formControl]="rememberMeFormControl" color="primary">
+            <!-- <mat-checkbox [formControl]="rememberMeFormControl" color="primary">
               Remember me
-            </mat-checkbox>
+            </mat-checkbox> -->
             <a href="#" class=""> Forgot your password? </a>
           </div>
 
@@ -111,8 +111,8 @@ import { CapitalizePipe } from "../../shared/pipes/capitalize.pipe";
 export class LoginComponent {
   emailFormControl = new FormControl('', [Validators.required, Validators.email]);
   passwordFormControl = new FormControl('', [Validators.required, Validators.minLength(6)]);
-  rememberMeFormControl = new FormControl(false);
-  
+  // rememberMeFormControl = new FormControl(false);
+
   loginForm: FormGroup;
   loading = signal(false);
 
@@ -125,7 +125,7 @@ export class LoginComponent {
     this.loginForm = this.fb.group({
       email: this.emailFormControl,
       password: this.passwordFormControl,
-      rememberMe: this.rememberMeFormControl,
+      // rememberMe: this.rememberMeFormControl,
     });
   }
 
@@ -137,7 +137,8 @@ export class LoginComponent {
 
       // Use mock login for development
       this.authService
-        .mockLogin(credentials.email, credentials.password)
+        // .mockLogin(credentials.email, credentials.password)
+        .login(credentials.email, credentials.password)
         .subscribe({
           next: () => {
             this.loading.set(false);

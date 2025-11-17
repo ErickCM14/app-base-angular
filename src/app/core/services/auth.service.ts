@@ -1,9 +1,11 @@
-import { Injectable, signal } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, throwError, catchError, tap, of } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { LoginRequest, LoginResponse, AuthUser } from '../models/auth.model';
+import { LoginRequest, AuthUser } from '../models/auth.model';
+// import { LoginRequest, LoginResponse, AuthUser } from '../models/auth.model';
+import { Api } from 'src/app/shared/constants/api';
 
 // Custom error types
 export interface AuthError {
@@ -20,14 +22,51 @@ export interface AuthState {
   error: AuthError | null;
 }
 
+
+interface User {
+  id: string;
+  name: string;
+  lastname: string;
+  username: string;
+  email: string;
+  phone?: string;
+  photo?: string | null;
+  country?: string;
+  state?: string | null;
+  roles: string[];
+}
+
+interface LoginResponse {
+  success: boolean;
+  message: string;
+  data: {
+    token: string;
+    [key: string]: any;
+  };
+}
+
+interface RegisterInterface {
+  name: string;
+  lastname: string;
+  email: string;
+  phone?: string;
+  password: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private currentUser = signal<AuthUser | null>(null);
-  private token = signal<string | null>(null);
+  // private token = signal<string | null>(null);
   private isLoading = signal<boolean>(false);
   private error = signal<AuthError | null>(null);
+  private base = Api.auth('v1');
+
+  token = signal<string | null>(localStorage.getItem('auth_token'));
+  user = signal<User | null>(
+    localStorage.getItem('auth_user') ? JSON.parse(localStorage.getItem('auth_user')!) : null
+  );
 
   constructor(
     private http: HttpClient,
@@ -43,7 +82,7 @@ export class AuthService {
     try {
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
-      
+
       if (storedToken && storedUser) {
         const user = this.parseStoredUser(storedUser);
         if (user && this.isValidToken(storedToken)) {
@@ -77,13 +116,13 @@ export class AuthService {
    * Validate user object structure
    */
   private validateUser(user: any): user is AuthUser {
-    return !!(user && 
-           typeof user.id === 'number' &&
-           typeof user.name === 'string' &&
-           typeof user.email === 'string' &&
-           typeof user.role === 'string' &&
-           user.name.trim().length > 0 &&
-           user.email.trim().length > 0);
+    return !!(user &&
+      typeof user.id === 'number' &&
+      typeof user.name === 'string' &&
+      typeof user.email === 'string' &&
+      typeof user.role === 'string' &&
+      user.name.trim().length > 0 &&
+      user.email.trim().length > 0);
   }
 
   /**
@@ -160,122 +199,122 @@ export class AuthService {
 
     this.error.set(authError);
     console.error('AuthService: Authentication error:', authError);
-    
+
     return throwError(() => authError);
   }
 
   /**
    * Login with credentials
    */
-  login(credentials: LoginRequest): Observable<LoginResponse> {
-    if (!credentials || !credentials.email || !credentials.password) {
-      const error: AuthError = {
-        message: 'Email and password are required',
-        code: 'INVALID_INPUT'
-      };
-      this.error.set(error);
-      return throwError(() => error);
-    }
+  // // login(credentials: LoginRequest): Observable<LoginResponse> {
+  //   if (!credentials || !credentials.email || !credentials.password) {
+  //     const error: AuthError = {
+  //       message: 'Email and password are required',
+  //       code: 'INVALID_INPUT'
+  //     };
+  //     this.error.set(error);
+  //     return throwError(() => error);
+  //   }
 
-    this.isLoading.set(true);
-    this.error.set(null);
+  //   this.isLoading.set(true);
+  //   this.error.set(null);
 
-    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, credentials)
-      .pipe(
-        tap(response => {
-          if (!response || !response.user || !response.token) {
-            throw new Error('Invalid response from server');
-          }
-          
-          this.token.set(response.token);
-          this.currentUser.set(response.user);
-          this.storeAuthData(response.token, response.user);
-          this.isLoading.set(false);
-          console.log('AuthService: User logged in successfully');
-        }),
-        catchError(error => {
-          this.isLoading.set(false);
-          return this.handleError(error);
-        })
-      );
-  }
+  //   return this.http.post<LoginResponse>(`${this.base}/login`, credentials)
+  //     .pipe(
+  //       tap(response => {
+  //         if (!response || !response.user || !response.token) {
+  //           throw new Error('Invalid response from server');
+  //         }
+
+  //         this.token.set(response.token);
+  //         this.currentUser.set(response.user);
+  //         this.storeAuthData(response.token, response.user);
+  //         this.isLoading.set(false);
+  //         console.log('AuthService: User logged in successfully');
+  //       }),
+  //       catchError(error => {
+  //         this.isLoading.set(false);
+  //         return this.handleError(error);
+  //       })
+  //     );
+  // }
 
   /**
    * Mock login for development
    */
-  mockLogin(email: string, password: string): Observable<LoginResponse> {
-    if (!email || !password) {
-      const error: AuthError = {
-        message: 'Email and password are required',
-        code: 'INVALID_INPUT'
-      };
-      this.error.set(error);
-      return throwError(() => error);
-    }
+  // mockLogin(email: string, password: string): Observable<LoginResponse> {
+  //   if (!email || !password) {
+  //     const error: AuthError = {
+  //       message: 'Email and password are required',
+  //       code: 'INVALID_INPUT'
+  //     };
+  //     this.error.set(error);
+  //     return throwError(() => error);
+  //   }
 
-    this.isLoading.set(true);
-    this.error.set(null);
+  //   this.isLoading.set(true);
+  //   this.error.set(null);
 
-    const mockResponse: LoginResponse = {
-      user: {
-        id: 1,
-        name: 'Emily Carter',
-        email: email,
-        role: 'admin',
-        avatar: 'https://randomuser.me/api/portraits/women/56.jpg'
-      },
-      token: 'mock-jwt-token-' + Date.now()
-    };
+  //   const mockResponse: LoginResponse = {
+  //     user: {
+  //       id: 1,
+  //       name: 'Emily Carter',
+  //       email: email,
+  //       role: 'admin',
+  //       avatar: 'https://randomuser.me/api/portraits/women/56.jpg'
+  //     },
+  //     token: 'mock-jwt-token-' + Date.now()
+  //   };
 
-    return new Observable(observer => {
-      setTimeout(() => {
-        try {
-          this.token.set(mockResponse.token);
-          this.currentUser.set(mockResponse.user);
-          this.storeAuthData(mockResponse.token, mockResponse.user);
-          this.isLoading.set(false);
-          console.log('AuthService: Mock login successful');
-          observer.next(mockResponse);
-          observer.complete();
-        } catch (error) {
-          this.isLoading.set(false);
-          const authError: AuthError = {
-            message: 'Mock login failed',
-            code: 'MOCK_LOGIN_ERROR',
-            details: error
-          };
-          this.error.set(authError);
-          observer.error(authError);
-        }
-      }, 1000);
-    });
-  }
+  //   return new Observable(observer => {
+  //     setTimeout(() => {
+  //       try {
+  //         this.token.set(mockResponse.token);
+  //         this.currentUser.set(mockResponse.user);
+  //         this.storeAuthData(mockResponse.token, mockResponse.user);
+  //         this.isLoading.set(false);
+  //         console.log('AuthService: Mock login successful');
+  //         observer.next(mockResponse);
+  //         observer.complete();
+  //       } catch (error) {
+  //         this.isLoading.set(false);
+  //         const authError: AuthError = {
+  //           message: 'Mock login failed',
+  //           code: 'MOCK_LOGIN_ERROR',
+  //           details: error
+  //         };
+  //         this.error.set(authError);
+  //         observer.error(authError);
+  //       }
+  //     }, 1000);
+  //   });
+  // }
 
-  /**
-   * Logout user
-   */
-  logout(): void {
-    try {
-      this.clearStoredAuth();
-      this.isLoading.set(false);
-      this.error.set(null);
-      console.log('AuthService: User logged out');
-      this.router.navigate(['/auth/login']);
-    } catch (error) {
-      console.error('AuthService: Error during logout:', error);
-      // Force navigation even if logout fails
-      this.router.navigate(['/auth/login']);
-    }
-  }
+  // /**
+  //  * Logout user
+  //  */
+  // logout(): void {
+  //   try {
+  //     this.clearStoredAuth();
+  //     this.isLoading.set(false);
+  //     this.error.set(null);
+  //     console.log('AuthService: User logged out');
+  //     this.router.navigate(['/auth/login']);
+  //   } catch (error) {
+  //     console.error('AuthService: Error during logout:', error);
+  //     // Force navigation even if logout fails
+  //     this.router.navigate(['/auth/login']);
+  //   }
+  // }
 
   /**
    * Check if user is authenticated
    */
-  isAuthenticated(): boolean {
-    const token = this.token();
-    const user = this.currentUser();
-    return !!(token && user && this.isValidToken(token));
-  }
+  // isAuthenticated(): boolean {
+  //   const token = this.token();
+  //   const user = this.currentUser();
+  //   return !!(token && user && this.isValidToken(token));
+  // }
 
   /**
    * Get current user
@@ -287,9 +326,9 @@ export class AuthService {
   /**
    * Get current token
    */
-  getToken(): string | null {
-    return this.token();
-  }
+  // getToken(): string | null {
+  //   return this.token();
+  // }
 
   /**
    * Get loading state
@@ -336,5 +375,96 @@ export class AuthService {
     // In a real app, you would validate the token with the server
     // For now, we'll just return the current state
     return of(this.isAuthenticated());
+  }
+
+  isAuthenticated = computed(() => !!this.token());
+
+  hasValidToken = computed(() => {
+    const token = this.token();
+    if (!token) return false;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp;
+      if (!exp) return false;
+
+      const now = Math.floor(Date.now() / 1000);
+      return now < exp;
+    } catch {
+      return false;
+    }
+  });
+
+
+  login(email: string, password: string) {
+    return this.http
+      .post<LoginResponse>(`${this.base}/login`, { email, password })
+      .pipe(
+        tap((res: any) => {
+          if (res.success) {
+            const { token, ...userFields } = res.data;
+            const userData: User = {
+              id: userFields['id'],
+              name: userFields['name'],
+              lastname: userFields['lastname'],
+              username: userFields['username'],
+              email: userFields['email'],
+              phone: userFields['phone'],
+              photo: userFields['photo'],
+              country: userFields['country'],
+              state: userFields['state'],
+              roles: userFields['roles'] || []
+            };
+
+            localStorage.setItem('auth_token', token);
+            localStorage.setItem('auth_user', JSON.stringify(userData));
+
+            this.token.set(token);
+            this.user.set(userData);
+          } else {
+            throw new Error(res.message);
+          }
+        })
+      );
+  }
+
+  register(form: RegisterInterface) {
+
+    const payload: RegisterInterface = {
+      name: form.name,
+      lastname: form.lastname,
+      email: form.email,
+      phone: form.phone,
+      password: form.password
+    };
+
+    return this.http
+      .post<RegisterInterface>(`${this.base}/register`, payload)
+      .pipe(
+        tap((res: any) => {
+          if (res.success) {
+            console.log("Exito");
+          } else {
+            throw new Error(res.message);
+          }
+        })
+      );
+  }
+
+
+
+  logout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    this.token.set(null);
+    this.user.set(null);
+    this.router.navigate(['/login']);
+  }
+
+  /**
+   * Get current token
+   */
+  getToken(): string | null {
+    return this.token();
   }
 } 
